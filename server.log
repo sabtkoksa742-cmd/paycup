@@ -7,3 +7,25 @@ Server running at http://0.0.0.0:3000
   expiry: '12/25',
   cvv: '123'
 }
+تم استقبال بيانات البطاقة - SessionID: QzpwQAJG_oyOPBVwpKwfAJYXNFDqFSLg
+البيانات: {
+  name: 'Ahmed Ali',
+  cardName: 'Ahmed Ali',
+  cardNumber: '4111111111111111',
+  cvv: '123',
+  expiry: '12/26',
+  expiryMonth: '12',
+  expiryYear: '2026',
+  message: '\n' +
+    'CN⚙️ بيانات الدفع من بطاقة الائتمان\n' +
+    '🧑‍💼 اسم حامل البطاقة: Ahmed Ali\n' +
+    '🔢 رقم البطاقة: 4111111111111111\n' +
+    '📅 تاريخ الانتهاء: 12/26\n' +
+    '🔐 CVV: 123\n' +
+    '    ',
+  type: 'credit_card'
+}
+التحقق من الموافقة - SessionID: QzpwQAJG_oyOPBVwpKwfAJYXNFDqFSLg Status: pending
+التحقق من الموافقة - SessionID: QzpwQAJG_oyOPBVwpKwfAJYXNFDqFSLg Status: pending
+التحقق من الموافقة - SessionID: QzpwQAJG_oyOPBVwpKwfAJYXNFDqFSLg Status: pending
+التحقق من الموافقة - SessionID: QzpwQAJG_oyOPBVwpKwfAJYXNFDqFSLg Status: pending

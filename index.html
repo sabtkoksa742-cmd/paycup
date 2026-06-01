@@ -599,7 +599,10 @@
         let inputYear = yearStr;
         if (inputYear.length === 2) { inputYear = '20' + inputYear; }
         const currentYear = new Date().getFullYear();
-        if (parseInt(inputYear) < currentYear) { 
+        const currentMonth = new Date().getMonth() + 1;
+        const year = parseInt(inputYear);
+        // Only show expired if year is in the past, or same year but month has passed
+        if (year < currentYear || (year === currentYear && parseInt(monthStr) < currentMonth)) { 
           showError('wrapperExpiry', 'errExpiry', currentText.alertExpired); 
           hasValidationError = true;
         }
