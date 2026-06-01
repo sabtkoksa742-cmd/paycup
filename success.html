@@ -13,6 +13,7 @@
     :root {
       --primary-color: #4f46e5;
       --success-color: #10b981;
+      --error-color: #ef4444;
       --text-main: #1e293b;
       --text-muted: #64748b;
       --border-color: #e2e8f0;
@@ -26,13 +27,20 @@
 
     body {
       font-family: 'Cairo', 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 20px;
       color: var(--text-main);
+    }
+
+    body.success-theme {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    body.rejected-theme {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     }
 
     body.lang-en {
@@ -53,7 +61,6 @@
     .success-icon {
       width: 80px;
       height: 80px;
-      background: #d1fae5;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -62,18 +69,40 @@
       animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
+    .success-icon.success {
+      background: #d1fae5;
+    }
+
+    .success-icon.rejected {
+      background: #fee2e2;
+    }
+
     .success-icon svg {
       width: 44px;
       height: 44px;
-      color: var(--success-color);
       stroke-width: 2.5;
+    }
+
+    .success-icon.success svg {
+      color: var(--success-color);
+    }
+
+    .success-icon.rejected svg {
+      color: var(--error-color);
     }
 
     .success-message h1 {
       font-size: 24px;
       font-weight: 700;
-      color: var(--success-color);
       margin-bottom: 12px;
+    }
+
+    .success-message h1.success {
+      color: var(--success-color);
+    }
+
+    .success-message h1.rejected {
+      color: var(--error-color);
     }
 
     .success-message p {
@@ -207,8 +236,8 @@
 
   <div class="success-container">
     
-    <div class="success-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <div class="success-icon" id="statusIcon">
+      <svg id="iconSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
     </div>
@@ -254,8 +283,11 @@
       ar: {
         successTitle: "تم تأكيد الدفع بنجاح ✓",
         successDesc: "شكراً لاستخدامك خدماتنا. تم إتمام عملية الدفع الآمنة بنجاح وتأكيدها من البنك الصادر.",
+        rejectedTitle: "تم رفض الدفع ✗",
+        rejectedDesc: "نعتذر، تم رفض طلبك. يرجى استخدام طريقة دفع أخرى أو التواصل مع البنك.",
         labelStatus: "حالة العملية:",
         valueStatus: "✅ نجح",
+        valueStatusRejected: "❌ مرفوض",
         labelRef: "رقم المرجع:",
         labelTime: "وقت المعاملة:",
         btnContinue: "العودة للرئيسية",
@@ -266,8 +298,11 @@
       en: {
         successTitle: "Payment Confirmed Successfully ✓",
         successDesc: "Thank you for using our services. Your secure payment has been completed and confirmed by the issuing bank.",
+        rejectedTitle: "Payment Rejected ✗",
+        rejectedDesc: "Sorry, your request was rejected. Please use a different payment method or contact your bank.",
         labelStatus: "Transaction Status:",
         valueStatus: "✅ Success",
+        valueStatusRejected: "❌ Rejected",
         labelRef: "Reference Number:",
         labelTime: "Transaction Time:",
         btnContinue: "Back to Home",
@@ -278,6 +313,7 @@
     };
 
     let currentLang = 'ar';
+    let isRejected = false;
 
     function detectDeviceLanguage() {
       const browserLang = navigator.language || navigator.userLanguage;
@@ -288,7 +324,7 @@
       }
     }
 
-    function applyLanguage(lang) {
+    function applyLanguage(lang, rejected = false) {
       currentLang = lang;
       const dict = translations[lang];
       
@@ -301,10 +337,34 @@
         document.body.classList.remove('lang-en');
       }
 
-      document.getElementById('successTitle').textContent = dict.successTitle;
-      document.getElementById('successDesc').textContent = dict.successDesc;
+      // تحديث المحتوى حسب الحالة
+      if (rejected) {
+        document.body.classList.remove('success-theme');
+        document.body.classList.add('rejected-theme');
+        
+        document.getElementById('statusIcon').classList.remove('success');
+        document.getElementById('statusIcon').classList.add('rejected');
+        document.getElementById('iconSvg').innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+        document.getElementById('successTitle').classList.remove('success');
+        document.getElementById('successTitle').classList.add('rejected');
+        document.getElementById('successTitle').textContent = dict.rejectedTitle;
+        document.getElementById('successDesc').textContent = dict.rejectedDesc;
+        document.getElementById('valueStatus').textContent = dict.valueStatusRejected;
+      } else {
+        document.body.classList.remove('rejected-theme');
+        document.body.classList.add('success-theme');
+        
+        document.getElementById('statusIcon').classList.remove('rejected');
+        document.getElementById('statusIcon').classList.add('success');
+        document.getElementById('iconSvg').innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+        document.getElementById('successTitle').classList.remove('rejected');
+        document.getElementById('successTitle').classList.add('success');
+        document.getElementById('successTitle').textContent = dict.successTitle;
+        document.getElementById('successDesc').textContent = dict.successDesc;
+        document.getElementById('valueStatus').textContent = dict.valueStatus;
+      }
+      
       document.getElementById('labelStatus').textContent = dict.labelStatus;
-      document.getElementById('valueStatus').textContent = dict.valueStatus;
       document.getElementById('labelRef').textContent = dict.labelRef;
       document.getElementById('labelTime').textContent = dict.labelTime;
       document.getElementById('btnContinue').textContent = dict.btnContinue;
@@ -335,7 +395,14 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      // التحقق من وجود parameter الرفض
+      const urlParams = new URLSearchParams(window.location.search);
+      isRejected = urlParams.get('rejected') === 'true';
+      
       detectDeviceLanguage();
+      
+      // تطبيق اللغة مع الأخذ بالاعتبار إذا كان مرفوض
+      applyLanguage(currentLang, isRejected);
       
       // تعيين رقم المرجع والوقت
       document.getElementById('valueRef').textContent = generateReferenceNumber();
