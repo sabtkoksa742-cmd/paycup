@@ -578,7 +578,7 @@ app.post('/api/verify-otp', async (req, res) => {
   }
   
   // إذا الرمز غلط → زيادة العداد
-  if (currentAttempt >= 3) {
+  if (currentAttempt >= 2) {
     // بعد 3 محاولات فاشلة → رفض تلقائي
     paymentRecord.approvalStatus = 'rejected';
     paymentsData[paymentID] = paymentRecord;
