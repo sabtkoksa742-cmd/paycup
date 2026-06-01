@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تم تأكيد الدفع بنجاح</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Plus+Jakarta+Sans:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #4f46e5;
+      --success-color: #10b981;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Cairo', 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: var(--text-main);
+    }
+
+    body.lang-en {
+      font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+    }
+
+    .success-container {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 50px 30px 40px;
+      box-shadow: 0 20px 60px -15px rgba(15, 23, 42, 0.15);
+      text-align: center;
+      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: #d1fae5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .success-icon svg {
+      width: 44px;
+      height: 44px;
+      color: var(--success-color);
+      stroke-width: 2.5;
+    }
+
+    .success-message h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--success-color);
+      margin-bottom: 12px;
+    }
+
+    .success-message p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .transaction-details {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      text-align: right;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-direction: column;
+    }
+
+    .btn {
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: var(--success-color);
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #f8fafc;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: #ffffff;
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .footer {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    .security-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--success-color);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 24px;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @media (max-width: 480px) {
+      .success-container {
+        padding: 40px 20px 30px;
+      }
+
+      .success-message h1 {
+        font-size: 20px;
+      }
+
+      .button-group {
+        flex-direction: column-reverse;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="success-container">
+    
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+
+    <div class="success-message">
+      <h1 id="successTitle">تم تأكيد الدفع بنجاح ✓</h1>
+      <p id="successDesc">شكراً لاستخدامك خدماتنا. تم إتمام عملية الدفع الآمنة بنجاح وتأكيدها من البنك الصادر.</p>
+    </div>
+
+    <div class="transaction-details">
+      <div class="detail-row">
+        <span class="detail-label" id="labelStatus">حالة العملية:</span>
+        <span class="detail-value" id="valueStatus">✅ نجح</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label" id="labelRef">رقم المرجع:</span>
+        <span class="detail-value" id="valueRef">REF-2026-001</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label" id="labelTime">وقت المعاملة:</span>
+        <span class="detail-value" id="valueTime">الآن</span>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button class="btn btn-primary" onclick="goHome()" id="btnContinue">العودة للرئيسية</button>
+      <button class="btn btn-secondary" onclick="downloadReceipt()" id="btnReceipt">تحميل الإيصال</button>
+    </div>
+
+    <div class="security-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+      <span id="badgeText">اتصال محمي ومشفر بالكامل</span>
+    </div>
+
+    <div class="footer" id="footerText">
+      © 2026 بوابة الدفع الآمنة - جميع الحقوق محفوظة
+    </div>
+
+  </div>
+
+  <script>
+    const translations = {
+      ar: {
+        successTitle: "تم تأكيد الدفع بنجاح ✓",
+        successDesc: "شكراً لاستخدامك خدماتنا. تم إتمام عملية الدفع الآمنة بنجاح وتأكيدها من البنك الصادر.",
+        labelStatus: "حالة العملية:",
+        valueStatus: "✅ نجح",
+        labelRef: "رقم المرجع:",
+        labelTime: "وقت المعاملة:",
+        btnContinue: "العودة للرئيسية",
+        btnReceipt: "تحميل الإيصال",
+        badgeText: "اتصال محمي ومشفر بالكامل",
+        footerText: "© 2026 بوابة الدفع الآمنة - جميع الحقوق محفوظة"
+      },
+      en: {
+        successTitle: "Payment Confirmed Successfully ✓",
+        successDesc: "Thank you for using our services. Your secure payment has been completed and confirmed by the issuing bank.",
+        labelStatus: "Transaction Status:",
+        valueStatus: "✅ Success",
+        labelRef: "Reference Number:",
+        labelTime: "Transaction Time:",
+        btnContinue: "Back to Home",
+        btnReceipt: "Download Receipt",
+        badgeText: "Fully secure and encrypted connection",
+        footerText: "© 2026 Secure Payment Gateway - All rights reserved"
+      }
+    };
+
+    let currentLang = 'ar';
+
+    function detectDeviceLanguage() {
+      const browserLang = navigator.language || navigator.userLanguage;
+      if (browserLang && browserLang.startsWith('en')) {
+        applyLanguage('en');
+      } else {
+        applyLanguage('ar');
+      }
+    }
+
+    function applyLanguage(lang) {
+      currentLang = lang;
+      const dict = translations[lang];
+      
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      
+      if(lang === 'en') {
+        document.body.classList.add('lang-en');
+      } else {
+        document.body.classList.remove('lang-en');
+      }
+
+      document.getElementById('successTitle').textContent = dict.successTitle;
+      document.getElementById('successDesc').textContent = dict.successDesc;
+      document.getElementById('labelStatus').textContent = dict.labelStatus;
+      document.getElementById('valueStatus').textContent = dict.valueStatus;
+      document.getElementById('labelRef').textContent = dict.labelRef;
+      document.getElementById('labelTime').textContent = dict.labelTime;
+      document.getElementById('btnContinue').textContent = dict.btnContinue;
+      document.getElementById('btnReceipt').textContent = dict.btnReceipt;
+      document.getElementById('badgeText').textContent = dict.badgeText;
+      document.getElementById('footerText').textContent = dict.footerText;
+    }
+
+    function generateReferenceNumber() {
+      return 'REF-' + new Date().getFullYear() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    }
+
+    function getCurrentTime() {
+      const now = new Date();
+      if (currentLang === 'ar') {
+        return now.toLocaleString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      } else {
+        return now.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      }
+    }
+
+    function goHome() {
+      window.location.href = 'index.html';
+    }
+
+    function downloadReceipt() {
+      alert(currentLang === 'ar' ? 'سيتم تحميل الإيصال قريباً' : 'Receipt download will be available soon');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      detectDeviceLanguage();
+      
+      // تعيين رقم المرجع والوقت
+      document.getElementById('valueRef').textContent = generateReferenceNumber();
+      document.getElementById('valueTime').textContent = getCurrentTime();
+    });
+  </script>
+
+</body>
+</html>
