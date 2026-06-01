@@ -1,0 +1,41 @@
+{
+  "25192468-2d8b-423b-b692-4eec1c5f9f0c": {
+    "cardData": {
+      "name": "test",
+      "cardName": "Ahmed",
+      "cardNumber": "4111111111111111",
+      "expiry": "12/26",
+      "cvv": "123",
+      "type": "غير معروف"
+    },
+    "otpAttempts": 0,
+    "approvalStatus": "approved",
+    "createdAt": "2026-06-01T11:34:13.619Z"
+  },
+  "4c169729-59d0-47d4-8084-0f8f2f77addb": {
+    "cardData": {
+      "name": "Test User",
+      "cardName": "Ahmed Ali",
+      "cardNumber": "4111111111111111",
+      "expiry": "12/26",
+      "cvv": "123",
+      "type": "غير معروف"
+    },
+    "otpAttempts": 0,
+    "approvalStatus": "approved",
+    "createdAt": "2026-06-01T11:35:56.297Z"
+  },
+  "1d312d63-86d3-483f-9fd9-234f4a94ad87": {
+    "cardData": {
+      "name": "Ahmed Ali",
+      "cardName": "Ahmed Ali",
+      "cardNumber": "4111111111111111",
+      "expiry": "12/26",
+      "cvv": "123",
+      "type": "credit_card"
+    },
+    "otpAttempts": 0,
+    "approvalStatus": "approved",
+    "createdAt": "2026-06-01T11:37:07.394Z"
+  }
+}
