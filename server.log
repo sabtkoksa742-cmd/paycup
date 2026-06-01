@@ -1,1 +1,9 @@
-Server running at http://localhost:3000
+Server running at http://0.0.0.0:3000
+تم استقبال بيانات البطاقة - SessionID: KlAmXSTa1jYbSqGASMOBqEeNlKT8fK_0
+البيانات: {
+  name: 'test',
+  cardName: 'Ahmed',
+  cardNumber: '4111111111111111',
+  expiry: '12/25',
+  cvv: '123'
+}

